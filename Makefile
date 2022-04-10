@@ -5,7 +5,7 @@
 # Version: 2.1
 # URL: https://github.com/mlanca-c/utils
 #
-# Description: This is my generic Makefile for projects.
+# Description: This is a generic Makefile.
 # **************************************************************************** #
 
 PROJECT	:= ...
@@ -17,11 +17,9 @@ USER	:= ...
 # Project Variables
 # **************************************************************************** #
 
-NAME1	:=	...			# Name of a single binary
+NAME1	:=	...
 
-NAMES	:= ${NAME1}		# List of all binary files.
-						# If a name starts with ${TEST_PREFIX}, then instead of
-						# going to ${BINS}, it will go to ${TEST_BINS}
+NAMES	:= ${NAME1}
 
 # **************************************************************************** #
 # Specifications and Initial Configs
@@ -38,7 +36,7 @@ OS	:= $(shell uname)
 # 4: Make will print all debug info
 #
 # @author fletcher97
-VERBOSE := 1
+VERBOSE := 2
 
 ifeq (${VERBOSE},0)
 	MAKEFLAGS += --silent
@@ -56,47 +54,47 @@ endif
 # used. By default it's turned on.
 #
 # @author fletcher97
-PEDANTIC := false
+PEDANTIC	:= false
 
 # If set to true then all the *_ROOT variables will be set to './'.
 # This is for small projects where it doesn't make sense to have everything
 # separated.
 SINGLE_DIR	:= false
 
-# If set to true, then testing targets and folders will be set to use.
-# Example:
-# 	NAMES		:= test1 test2 bin1 bin2
-# 	TESTING		:= true
-# 	FIND_TEST	:= test
-TESTING		:=
-FIND_TEST	:=
+# Test flag
+TESTING		:= false
 
 # **************************************************************************** #
 # Colors and Messages
 # **************************************************************************** #
 
 GREEN		:= \e[38;5;118m
+BLUE		:= \e[38;5;20m
 YELLOW		:= \e[38;5;226m
 RED			:= \e[38;5;9m
+DRED		:= \e[38;5;88m
 RESET		:= \e[0m
 
-_SUCCESS	:= [${GREEN} ok ${RESET}]
-_FAILURE	:= [${RED} ko ${RESET}]
-_INFO		:= [${YELLOW} info ${RESET}]
+_OBJS	:= [${DRED} obj ${RESET}]:
+_BINS	:= [${BLUE} bin ${RESET}]:
+
+_SUCCESS	:= [${GREEN} ok ${RESET}]:
+_FAILURE	:= [${RED} ko ${RESET}]:
+_INFO		:= [${YELLOW} info ${RESET}]:
 
 # **************************************************************************** #
 # Language Specs
 # **************************************************************************** #
 
-# Language name (Check specs below)
-LANG	:= ...
+LANG	:= c
 LANG	:= $(shell echo '${LANG}' | tr '[:upper:]' '[:lower:]')
 
-ifeq (${LANG}, c)
-	EXTENSION	:= .c .h
+# Add more extensions here.
+ifeq (${LANG},c)
+	EXTENSION	:= .c
 endif
-ifeq (${LANG}, $(filter, cpp c++))
-	EXTENSION	:= .cpp .hpp
+ifeq (${LANG},$(filter, cpp c++))
+	EXTENSION	:= .cpp
 endif
 
 # **************************************************************************** #
@@ -109,40 +107,70 @@ ifeq (${SINGLE_DIR},false)
  INC_ROOT	:= inc/
  LIB_ROOT	:= lib/
  BIN_ROOT	:= bin/
- TST_ROOT	:= tst/
- TBIN_ROOT	:= tbin/
 else
  $(foreach var,\
-	SRC_ROOT OBJ_ROOT INC_ROOT LIB_ROOT BIN_ROOT TST_ROOT TBIN_ROOT,\
+	SRC_ROOT OBJ_ROOT INC_ROOT LIB_ROOT BIN_ROOT,\
     $(eval $(var) := ./)\
  )
 endif
-ifeq (${TESTING},false)
-	undefine TEST_BINS TBIN_ROOT
+
+# **************************************************************************** #
+# Libraries
+# **************************************************************************** #
+
+# libft
+LIBFT_TARGET	:= false
+LIBFT_ROOT	:= ${LIB_ROOT}libft/
+LIBFT_INC	:= ${LIBFT_ROOT}inc/
+LIBFT		:= ${LIBFT_ROOT}bin/libft.a
+
+ifeq (${LIBFT_TARGET},false)
+	undefine LIBFT
+	undefine LIBFT_ROOT
+	undefine LIBFT_INC
 endif
+
+# All libs
+INC_DIRS	+= ${LIBFT_INC}
+LIBS		:= ${LIBFT}
 
 # **************************************************************************** #
 # File Manipulation
 # **************************************************************************** #
 
 RM		:= rm -vf
+PRINT	:= printf
 CP		:= cp -r
 MKDIR	:= mkdir -vp
+NORM	:= norminette
+ifeq (${OS},Linux)
+SED		:= sed -i.tmp --expression
+else ifeq (${OS},Darwin)
+SED		:= sed -i.tmp
+endif
 
 # Definitions
-T     := 1
-comma := ,
-empty :=
-space := $(empty) $(empty)
-tab   := $(empty)	$(empty)
+T		:= 1
+comma	:= ,
+empty	:=
+space	:= $(empty) $(empty)
+tab		:= $(empty)	$(empty)
+
+# **************************************************************************** #
+# Functions
+# **************************************************************************** #
+
+define eq
+$(strip $(if $(or $(strip $1),$(strip $2)),\
+    $(if $(filter $(subst $(space),,$1),$(subst $(space),,$2)),T),T))
+endef
 
 # **************************************************************************** #
 # Test Specs
 # **************************************************************************** #
 
-# Functions
-# =========
-# 1) eq: compares two strings
+# Test Specifications
+# ===================
 # 2) has-test-word: returns empty if filename doesn't start with TEST_PREFIX
 #
 # 3) is-test: returns empty if ${TESTING} is set to false or if FIND_TEST is
@@ -152,19 +180,13 @@ tab   := $(empty)	$(empty)
 # 4) not-test: returns ${NAMES} if ${TESTING} is set to false or if FIND_TEST
 # 			is empty. Else it returns a list of ${NAMES} that do not contain the
 # 			string ${FIND_TEST}.
-#
 
-define eq
-$(strip $(if $(or $(strip $1),$(strip $2)),\
-    $(if $(filter $(subst $(space),,$1),$(subst $(space),,$2)),T),T))
-endef
-
-has-test-word = $(foreach bin, $(1), $(shell echo $(bin) | grep ${FIND_TEST}))
+has-test-word = $(foreach bin,$(1),$(shell echo $(bin) | grep ${FIND_TEST}))
 
 define is-test
 $(if $(call eq,${TESTING},true),\
 	$(if ${FIND_TEST},\
-		$(strip $(call has-test-word, $(1))),\
+		$(strip $(call has-test-word,$(1))),\
 		${empty}\
 		),\
 	${empty}\
@@ -174,7 +196,7 @@ endef
 define not-test
 $(if $(call eq,${TESTING},true),\
 	$(if $(FIND_TEST),\
-		$(filter-out $(call has-test-word,$(1)), $(1)),\
+		$(filter-out $(call has-test-word,$(1)),$(1)),\
 		$(1)\
 		),\
 	$(1)\
@@ -185,29 +207,27 @@ endef
 # Folders
 # **************************************************************************** #
 
-# **************************************************************************** #
-# Files
-# **************************************************************************** #
-
 # Directories List (root is SRC_ROOT)
-DIRS	:= ./
+DIRS	:= ./:folder1/:folder2/
 
-# Test Directories List (root is TST_ROOT)
-TSTDIRS	:= ./
+SRC_DIRS_LIST	:= $(addprefix ${SRC_ROOT},${DIRS})
+SRC_DIRS_LIST	:= $(foreach dir,${SRC_DIRS_LIST},$(subst :,:${SRC_ROOT},${dir}))
+
+SRC_DIRS	:= $(subst :,${space},${SRC_DIRS_LIST})
+OBJ_DIRS	:= $(subst ${SRC_ROOT},${OBJ_ROOT},${SRC_DIRS})
+INC_DIRS	+= ${INC_ROOT}
+
+# **************************************************************************** #
+# Files
+# **************************************************************************** #
 
 # Files
-SRCS	:=
-OBJS	:=
-INCS	:=
-LIBS	:=
-
-TEST_SRCS	:=
-TEST_OBJS	:=
-TEST_INCS	:=
+SRCS	:= $(foreach dir,${SRC_DIRS},$(wildcard ${dir}*${EXTENSION}))
+OBJS	:= $(subst ${SRC_ROOT},${OBJ_ROOT},${SRCS:.c=.o})
+INCS	:= $(addprefix -I,${INC_DIRS})
 
 # Binaries
-BINS		:= $(call not-test, ${NAMES})
-TEST_BINS	:= $(call is-test, ${NAMES})
+BINS	:= $(addprefix ${BIN_ROOT},${NAMES})
 
 # **************************************************************************** #
 # Compiler and Flags
@@ -268,19 +288,90 @@ ifeq (${PEDANTIC},true)
 	endif
 endif
 
-
 # **************************************************************************** #
 # Project Targets
 # **************************************************************************** #
 
 all: ${BINS}
 
+# ${BIN_ROOT}${NAME1}: $(call get_files,$$(@F),$${OBJS_LIST})
+# 	${AT}${MKDIR} $(@D) ${BLOCK}
+
 # **************************************************************************** #
-# Util Functions
+# Clean Targets
 # **************************************************************************** #
 
-# Print a specifique variable
+clean: $$(call get_lib_target,$${DEFAULT_LIBS},$$@)
+
+fclean:
+
+re:
+
+# **************************************************************************** #
+# Debug Targets
+# **************************************************************************** #
+
+debug:
+
+debug_re:
+
+debug_asan:
+
+# **************************************************************************** #
+# Utils Targets
+# **************************************************************************** #
+
+
+ifeq (${SINGLE_DIR},false)
+create_folders:
+	${AT}${MKDIR} ${SRC_ROOT} ${BLOCK}
+	${AT}${MKDIR} ${INC_ROOT} ${BLOCK}
+	${AT}${PRINT} "${_INFO} folders created\n" ${BLOCK}
+
+organize: create_folders
+	${AT}${_INFO} ${BLOCK}
+endif
+
+ifeq (${LANG},c)
+norm:
+	${NORM}
+endif
+
+# Print a specific variable
 print-%: ; @echo $*=$($*)
+
+# **************************************************************************** #
+# Functions
+# **************************************************************************** #
+
+# Get default target for libs given a rule
+get_lib_target = $(foreach lib,$1,${lib}/$2)
+
+# **************************************************************************** #
+# Target Template
+# **************************************************************************** #
+
+define make_bin
+$(1): $(2)
+endef
+
+define make_obj
+$(1): $(2) $(3)
+	$${AT}$${PRINT} "$${_OBJECTS} $$@\n" $${BLOCK}
+	$${AT}$${CC} $${CFLAGS} $${INCS} -c $$< -o $$@ $${BLOCK}
+endef 
+
+# **************************************************************************** #
+# Target Generator
+# **************************************************************************** #
+
+ifneq (${BIN_ROOT},./)
+$(foreach bin,${BINS},$(eval\
+$(call make_bin,$(notdir ${bin}),${bin})))
+endif
+
+$(foreach src,${SRCS},$(eval\
+$(call make_obj,$(subst ${SRC_ROOT},${OBJ_ROOT},${src:.c=.o}),${src})))
 
 # **************************************************************************** #
 # **************************************************************************** #
