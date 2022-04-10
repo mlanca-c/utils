@@ -86,7 +86,7 @@ _INFO		:= [${YELLOW} info ${RESET}]:
 # Language Specs
 # **************************************************************************** #
 
-LANG	:= c
+LANG	:= ...
 LANG	:= $(shell echo '${LANG}' | tr '[:upper:]' '[:lower:]')
 
 # Add more extensions here.
@@ -208,10 +208,11 @@ endef
 # **************************************************************************** #
 
 # Directories List (root is SRC_ROOT)
-DIRS	:= ./:folder1/:folder2/
+DIRS	:= ./
 
 SRC_DIRS_LIST	:= $(addprefix ${SRC_ROOT},${DIRS})
-SRC_DIRS_LIST	:= $(foreach dir,${SRC_DIRS_LIST},$(subst :,:${SRC_ROOT},${dir}))
+SRC_DIRS_LIST	:= $(foreach dir,${SRC_DIRS_LIST},\
+				   $(subst :,:${SRC_ROOT},${dir}))
 
 SRC_DIRS	:= $(subst :,${space},${SRC_DIRS_LIST})
 OBJ_DIRS	:= $(subst ${SRC_ROOT},${OBJ_ROOT},${SRC_DIRS})
@@ -221,20 +222,16 @@ INC_DIRS	+= ${INC_ROOT}
 # Files
 # **************************************************************************** #
 
-# Files
 SRCS	:= $(foreach dir,${SRC_DIRS},$(wildcard ${dir}*${EXTENSION}))
 OBJS	:= $(subst ${SRC_ROOT},${OBJ_ROOT},${SRCS:.c=.o})
 INCS	:= $(addprefix -I,${INC_DIRS})
-
-# Binaries
 BINS	:= $(addprefix ${BIN_ROOT},${NAMES})
 
 # **************************************************************************** #
 # Compiler and Flags
 # **************************************************************************** #
 
-# If set to true, the program will compile with a specific flag.
-THREAD		:= false
+THREAD	:= false
 
 ifeq (${LANG},$(filter ${LANG},cpp c++ c))
 	CFLAGS	:= -Wall -Wextra -Werror
@@ -294,14 +291,16 @@ endif
 
 all: ${BINS}
 
-# ${BIN_ROOT}${NAME1}: $(call get_files,$$(@F),$${OBJS_LIST})
-# 	${AT}${MKDIR} $(@D) ${BLOCK}
+${BIN_ROOT}${NAME1}: $(call get_files,$$(@F),$${OBJS_LIST})
+	${AT}${MKDIR} ${@D} ${BLOCK}
+	${AT}${CC} ${CFLAGS} ${INCS} $(call get_files,${@F},${OBJS_LIST}) ${LIBS}\
+		-o $@ ${BLOCK}
 
 # **************************************************************************** #
 # Clean Targets
 # **************************************************************************** #
 
-clean: $$(call get_lib_target,$${DEFAULT_LIBS},$$@)
+clean:
 
 fclean:
 
@@ -321,16 +320,54 @@ debug_asan:
 # Utils Targets
 # **************************************************************************** #
 
+# .PHONY: .init
+# .init: clear
+# 	${AT}mkdir -p ${SRC_ROOT} ${BLOCK}
+# 	${AT}mkdir -p ${INC_ROOT} ${BLOCK}
+# 	${AT}mkdir -p ${OBJ_ROOT} ${BLOCK}
+# 	${AT}mkdir -p ${LIB_ROOT} ${BLOCK}
+# 	${AT}git clone git@github.com:${USER1}/Generic-README.git ${BLOCK}
+# 	${AT}mv Generic-README/README.md ./ ${BLOCK}
+# 	${AT}rm -rf Generic-README ${BLOCK}
+# 	${AT}${SED} 's/NAME/${PROJECT}/g' README.md ${BLOCK}
+# 	${AT}git init ${BLOCK}
+# 	${AT}echo "*.o\n*.d\n.vscode\na.out\n.DS_Store" > .gitignore ${BLOCK}
+# 	${AT}git add README.md ${BLOCK}
+# 	${AT}git add .gitignore ${BLOCK}
+# 	${AT}git add Makefile ${BLOCK}
+# 	${AT}git commit -m "first commit - via Makefile (automatic)" ${BLOCK}
+# 	${AT}git branch -M main ${BLOCK}
+# 	${AT}git remote add origin git@github.com:${USER1}/${PROJECT}.git ${BLOCK}
+# 	${AT}git status ${BLOCK}
+# 	${AT}printf "Poject folders created ................ ${_SUCCESS}\n" ${BLOCK}
+# 	${AT}printf "Cloned Generic-README to project ...... ${_SUCCESS}\n" ${BLOCK}
+# 	${AT}printf "README.md created ..................... ${_SUCCESS}\n" ${BLOCK}
+# 	${AT}printf "Git Repository initialized ............ ${_SUCCESS}\n" ${BLOCK}
+# 	${AT}printf "README.md added to repository ......... ${_SUCCESS}\n" ${BLOCK}
+# 	${AT}printf ".gitignore added to repository......... ${_SUCCESS}\n" ${BLOCK}
+# 	${AT}printf "Makefile added to repository .......... ${_SUCCESS}\n" ${BLOCK}
+# 	${AT}printf "Setup ready ........................... ${_SUCCESS}\n" ${BLOCK}
+# 	${AT}printf "[${YELLOW} push ${RESET}]: git push -u origin main\n" ${BLOCK}
 
-ifeq (${SINGLE_DIR},false)
-create_folders:
+.init:
+	${AT}${PRINT} "${_INFO} creating structure\n" ${BLOCK}
 	${AT}${MKDIR} ${SRC_ROOT} ${BLOCK}
 	${AT}${MKDIR} ${INC_ROOT} ${BLOCK}
-	${AT}${PRINT} "${_INFO} folders created\n" ${BLOCK}
-
-organize: create_folders
-	${AT}${_INFO} ${BLOCK}
-endif
+	${AT}${MKDIR} ${LIB_ROOT} ${BLOCK}
+	${AT}${PRINT} "${_INFO} initializing git\n" ${BLOCK}
+	${AT}git init${BLOCK}
+	${AT}echo "*.o\n*.d\n.vscode\na.out\n.DS_Store\nbin/\n*.ignore"\
+		> .gitignore ${BLOCK}
+	${AT}git clone git@github.com:${USER1}/Generic-README.git ${BLOCK}
+	${AT}mv Generic-README/README.md ./ ${BLOCK}
+	${AT}rm -rf Generic-README ${BLOCK}
+	${AT}${SED} 's/NAME/${PROJECT}/g' README.md ${BLOCK}
+	${AT}git add .gitignore ${BLOCK}
+	${AT}git add Makefile ${BLOCK}
+	${AT}git commit -m "initial commit" ${BLOCK}
+	${AT}git branch -M main ${BLOCK}
+	${AT}git remote add origin git@github.com:${USER1}/${PROJECT}.git ${BLOCK}
+	${AT}git status ${BLOCK}
 
 ifeq (${LANG},c)
 norm:
@@ -343,9 +380,6 @@ print-%: ; @echo $*=$($*)
 # **************************************************************************** #
 # Functions
 # **************************************************************************** #
-
-# Get default target for libs given a rule
-get_lib_target = $(foreach lib,$1,${lib}/$2)
 
 # **************************************************************************** #
 # Target Template
