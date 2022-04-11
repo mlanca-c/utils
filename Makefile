@@ -91,10 +91,12 @@ LANG	:= $(shell echo '${LANG}' | tr '[:upper:]' '[:lower:]')
 
 # Add more extensions here.
 ifeq (${LANG},c)
-	EXTENSION	:= .c
+EXTENSION	:= .c
+OBJ_EXTENSION	:= .o
 endif
 ifeq (${LANG},$(filter, cpp c++))
-	EXTENSION	:= .cpp
+EXTENSION	:= .cpp
+OBJ_EXTENSION	:= .o
 endif
 
 # **************************************************************************** #
@@ -120,9 +122,9 @@ endif
 
 # libft
 LIBFT_TARGET	:= false
-LIBFT_ROOT	:= ${LIB_ROOT}libft/
-LIBFT_INC	:= ${LIBFT_ROOT}inc/
-LIBFT		:= ${LIBFT_ROOT}bin/libft.a
+LIBFT_ROOT		:= ${LIB_ROOT}libft/
+LIBFT_INC		:= ${LIBFT_ROOT}inc/
+LIBFT			:= ${LIBFT_ROOT}bin/libft.a
 
 ifeq (${LIBFT_TARGET},false)
 	undefine LIBFT
@@ -130,19 +132,40 @@ ifeq (${LIBFT_TARGET},false)
 	undefine LIBFT_INC
 endif
 
+# MiniLibX
+MLX_TARGET	:= true
+ifeq (${OS},Linux)
+MLX_ROOT	:= ${LIB_ROOT}minilibx-linux/
+MLXFLAGS	:= -lbsd -L${MLX_ROOT} -lmlx -lXext -lX11 -lm
+MLX			:= minilibx-linux
+else ifeq (${OS},Darwin)
+MLX_ROOT	:= ${LIB_ROOT}minilibx_mms/
+MLXFLAGS	:= -L${MLX_ROOT} -lmlx 
+MLX			:= minilibx_mms
+endif
+MLX_INC		:= ${MLX_ROOT}
+
+ifeq (${MLX_TARGET},false)
+	undefine MLX 
+	undefine MLX_ROOT
+	undefine MLX_INC
+	undefine MLX_FLAG
+endif
+
 # All libs
-INC_DIRS	+= ${LIBFT_INC}
+INC_DIRS	+= ${LIBFT_INC} ${MLX_INC}
 LIBS		:= ${LIBFT}
 
 # **************************************************************************** #
 # File Manipulation
 # **************************************************************************** #
 
-RM		:= rm -vf
+RM		:= rm -f
 PRINT	:= printf
 CP		:= cp -r
-MKDIR	:= mkdir -vp
+MKDIR	:= mkdir -p
 NORM	:= norminette
+FIND	:= find
 ifeq (${OS},Linux)
 SED		:= sed -i.tmp --expression
 else ifeq (${OS},Darwin)
@@ -155,53 +178,6 @@ comma	:= ,
 empty	:=
 space	:= $(empty) $(empty)
 tab		:= $(empty)	$(empty)
-
-# **************************************************************************** #
-# Functions
-# **************************************************************************** #
-
-define eq
-$(strip $(if $(or $(strip $1),$(strip $2)),\
-    $(if $(filter $(subst $(space),,$1),$(subst $(space),,$2)),T),T))
-endef
-
-# **************************************************************************** #
-# Test Specs
-# **************************************************************************** #
-
-# Test Specifications
-# ===================
-# 2) has-test-word: returns empty if filename doesn't start with TEST_PREFIX
-#
-# 3) is-test: returns empty if ${TESTING} is set to false or if FIND_TEST is
-# 			empty. Else it returns a list of ${NAMES} that contain the string
-# 			${FIND_TEST}.
-#
-# 4) not-test: returns ${NAMES} if ${TESTING} is set to false or if FIND_TEST
-# 			is empty. Else it returns a list of ${NAMES} that do not contain the
-# 			string ${FIND_TEST}.
-
-has-test-word = $(foreach bin,$(1),$(shell echo $(bin) | grep ${FIND_TEST}))
-
-define is-test
-$(if $(call eq,${TESTING},true),\
-	$(if ${FIND_TEST},\
-		$(strip $(call has-test-word,$(1))),\
-		${empty}\
-		),\
-	${empty}\
-)
-endef
-
-define not-test
-$(if $(call eq,${TESTING},true),\
-	$(if $(FIND_TEST),\
-		$(filter-out $(call has-test-word,$(1)),$(1)),\
-		$(1)\
-		),\
-	$(1)\
-)
-endef
 
 # **************************************************************************** #
 # Folders
@@ -291,95 +267,135 @@ endif
 
 all: ${BINS}
 
-${BIN_ROOT}${NAME1}: $(call get_files,$$(@F),$${OBJS_LIST})
+# If MLX_TARGET = true, add this line to target: ${MAKE} -C ${MLX_ROOT}
+${BIN_ROOT}${NAME1}: ${LIBFT} ${OBJS}
 	${AT}${MKDIR} ${@D} ${BLOCK}
-	${AT}${CC} ${CFLAGS} ${INCS} $(call get_files,${@F},${OBJS_LIST}) ${LIBS}\
-		-o $@ ${BLOCK}
+	${AT}${CC} ${FLAGS} ${INCS} ${OBJS} ${MLX_FLAG} ${LIBS} -o $@ ${BLOCK}
+	${AT}${PRINT} "${_BINS} $@\n"${BLOCK}
+
+${LIBFT}:
+	${AT}${MAKE} -C ${LIBFT_ROOT} VERBOSE=${VERBOSE} ${BLOCK}
 
 # **************************************************************************** #
 # Clean Targets
 # **************************************************************************** #
 
 clean:
+	${AT}${MAKE} $@ -C ${LIBFT_ROOT} ${BLOCK}
+	${AT}${PRINT} "${_INFO} ${PROJECT}: object files removed\n" ${BLOCK}
+	${AT}${MKDIR} ${OBJ_ROOT} ${BLOCK}
+	${AT}${FIND} ${OBJ_ROOT} -type f -name "*${OBJ_EXTENSION}" -delete ${BLOCK}
 
-fclean:
+fclean: clean
+	${AT}${MAKE} $@ -C ${LIBFT_ROOT} ${BLOCK}
+	${AT}${PRINT} "${_INFO} ${PROJECT}: binaries files removed\n" ${BLOCK}
+	${AT}mkdir -p ${BIN_ROOT} ${BLOCK}
+	${AT}${FIND} ${BIN_ROOT} -type f\
+		$(addprefix -name ,${NAMES}) -delete ${BLOCK}
 
-re:
+re: fclean all
 
 # **************************************************************************** #
 # Debug Targets
 # **************************************************************************** #
 
-debug:
+debug: CFLAGS += ${DFLAGS}
+debug: ${MAKE} $$@ -C ${LIBFT_ROOT}
+debug: all
 
-debug_re:
+debug_re: fclean debug
 
-debug_asan:
+debug_asan: CFLAGS += ${DFLAGS} ${ASAN}
+debug_asan: ${MAKE} $$@ -C ${LIBFT_ROOT}
+debug_asan: all
+
+debug_asan_re: fclean debug_asan
 
 # **************************************************************************** #
 # Utils Targets
 # **************************************************************************** #
 
-# .PHONY: .init
-# .init: clear
-# 	${AT}mkdir -p ${SRC_ROOT} ${BLOCK}
-# 	${AT}mkdir -p ${INC_ROOT} ${BLOCK}
-# 	${AT}mkdir -p ${OBJ_ROOT} ${BLOCK}
-# 	${AT}mkdir -p ${LIB_ROOT} ${BLOCK}
-# 	${AT}git clone git@github.com:${USER1}/Generic-README.git ${BLOCK}
-# 	${AT}mv Generic-README/README.md ./ ${BLOCK}
-# 	${AT}rm -rf Generic-README ${BLOCK}
-# 	${AT}${SED} 's/NAME/${PROJECT}/g' README.md ${BLOCK}
-# 	${AT}git init ${BLOCK}
-# 	${AT}echo "*.o\n*.d\n.vscode\na.out\n.DS_Store" > .gitignore ${BLOCK}
-# 	${AT}git add README.md ${BLOCK}
-# 	${AT}git add .gitignore ${BLOCK}
-# 	${AT}git add Makefile ${BLOCK}
-# 	${AT}git commit -m "first commit - via Makefile (automatic)" ${BLOCK}
-# 	${AT}git branch -M main ${BLOCK}
-# 	${AT}git remote add origin git@github.com:${USER1}/${PROJECT}.git ${BLOCK}
-# 	${AT}git status ${BLOCK}
-# 	${AT}printf "Poject folders created ................ ${_SUCCESS}\n" ${BLOCK}
-# 	${AT}printf "Cloned Generic-README to project ...... ${_SUCCESS}\n" ${BLOCK}
-# 	${AT}printf "README.md created ..................... ${_SUCCESS}\n" ${BLOCK}
-# 	${AT}printf "Git Repository initialized ............ ${_SUCCESS}\n" ${BLOCK}
-# 	${AT}printf "README.md added to repository ......... ${_SUCCESS}\n" ${BLOCK}
-# 	${AT}printf ".gitignore added to repository......... ${_SUCCESS}\n" ${BLOCK}
-# 	${AT}printf "Makefile added to repository .......... ${_SUCCESS}\n" ${BLOCK}
-# 	${AT}printf "Setup ready ........................... ${_SUCCESS}\n" ${BLOCK}
-# 	${AT}printf "[${YELLOW} push ${RESET}]: git push -u origin main\n" ${BLOCK}
-
 .init:
-	${AT}${PRINT} "${_INFO} creating structure\n" ${BLOCK}
 	${AT}${MKDIR} ${SRC_ROOT} ${BLOCK}
 	${AT}${MKDIR} ${INC_ROOT} ${BLOCK}
 	${AT}${MKDIR} ${LIB_ROOT} ${BLOCK}
-	${AT}${PRINT} "${_INFO} initializing git\n" ${BLOCK}
+	${AT}${PRINT} "${_INFO} ${PROJECT}: structure created\n" ${BLOCK}
 	${AT}git init${BLOCK}
+	${AT}${PRINT} "${_INFO} git: repository initialed\n" ${BLOCK}
 	${AT}echo "*.o\n*.d\n.vscode\na.out\n.DS_Store\nbin/\n*.ignore"\
 		> .gitignore ${BLOCK}
+	${AT}${PRINT} "${_INFO} git: .gitignore: file created\n" ${BLOCK}
 	${AT}git clone git@github.com:${USER1}/Generic-README.git ${BLOCK}
 	${AT}mv Generic-README/README.md ./ ${BLOCK}
 	${AT}rm -rf Generic-README ${BLOCK}
 	${AT}${SED} 's/NAME/${PROJECT}/g' README.md ${BLOCK}
+	${AT}${PRINT} "${_INFO} git: README.md: file created\n" ${BLOCK}
+	${AT}git add README.md ${BLOCK}
 	${AT}git add .gitignore ${BLOCK}
 	${AT}git add Makefile ${BLOCK}
-	${AT}git commit -m "initial commit" ${BLOCK}
+	${AT}git commit -m "first commit - via Makefile (automatic)" ${BLOCK}
+	${AT}${PRINT} "${_INFO} git: commit: \"initial commit\"\n" ${BLOCK}
 	${AT}git branch -M main ${BLOCK}
 	${AT}git remote add origin git@github.com:${USER1}/${PROJECT}.git ${BLOCK}
-	${AT}git status ${BLOCK}
+	${AT}${PRINT} "${_INFO} ${PROJECT}: project initialized\n" ${BLOCK}
 
 ifeq (${LANG},c)
 norm:
 	${NORM}
 endif
 
-# Print a specific variable
 print-%: ; @echo $*=$($*)
+
+# **************************************************************************** #
+# .PHONY
+# **************************************************************************** #
+
+# Phony clean targets
+.PHONY: clean fclean clean_all
+
+# Phony debug targets
+.PHONY: debug debug_re debug_asan debug_asan_re
+
+# Phony execution targets
+.PHONY: re all
 
 # **************************************************************************** #
 # Functions
 # **************************************************************************** #
+
+define eq
+$(strip $(if $(or $(strip $1),$(strip $2)),\
+    $(if $(filter $(subst $(space),,$1),$(subst $(space),,$2)),T),T))
+endef
+
+has-test-word = $(foreach bin,$(1),$(shell echo $(bin) | grep ${FIND_TEST}))
+
+define is-test
+$(if $(call eq,${TESTING},true),\
+	$(if ${FIND_TEST},\
+		$(strip $(call has-test-word,$(1))),\
+		${empty}\
+		),\
+	${empty}\
+)
+endef
+
+define not-test
+$(if $(call eq,${TESTING},true),\
+	$(if $(FIND_TEST),\
+		$(filter-out $(call has-test-word,$(1)),$(1)),\
+		$(1)\
+		),\
+	$(1)\
+)
+endef
+
+define norm
+$(if ${LANG},c,\
+	$(if $(shell ${NORM} | grep Error),, \
+	${PRINT} "${_KO} norminette failing in some files\n")\
+)
+endef
 
 # **************************************************************************** #
 # Target Template
