@@ -32,13 +32,22 @@ function install() {
 		fi
 }
 
-yes_or_no "Install Makefile" && install "Makefile" && echo "Make sure to replace every '...' in Makefile with your preferences"
+function check_exists() {
+	if [ $1 $2 ]; then
+		if [ $1 == "-f" ]; then
+			yes_or_no "$2 already exists. Do you to override existing Makefile?" && return 1
+		fi
+		return 0
+	else
+		echo "bash: $2: doesn't exist"; return 1
+	fi
+}
 
-# Intall Makefile
-# Say to add things to ...
-# Ask If I want to create folders? If I say no then tell me to put true in Makefile
+yes_or_no "Install Makefile" && (check_exists "-f" "Makefile" || (install "Makefile" && echo "Makfile: sure to replace every '...' with your preferences" && yes_or_no "initialize project folders?" && make folders))
 
-# Ask if I want the ASAN folder and if src exists put it there otherwise ./
+yes_or_no "Install Hooks" && check_exists "-d" ".git" && mkdir -p .git/hooks/ && install "hooks/pre-commit" && mv pre-commit .git/hooks/
 
-# Ask to install hooks? And say what they are about.
-# Exit status 
+yes_or_no "Install asan" && ((check_exists "-d" "src" && mkdir -p src/asan/ && install "asan/asan.c" && mv asan.c src/asan/ ) || \
+	install "asan/asan.c")
+
+exit 0
