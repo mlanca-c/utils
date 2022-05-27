@@ -432,23 +432,30 @@ debug_msan_re: fclean debug_msan
 # **************************************************************************** #
 
 .init:
-	${AT}${PRINT} "${_INFO} creating folder structure\n" ${BLOCK}
-	${AT}${MKDIR} ${DEP_ROOT} ${BLOCK}
-	${AT}${MKDIR} ${BIN_ROOT} ${BLOCK}
-	${AT}${MKDIR} ${DEP_ROOT} ${BLOCK}
-	${AT}${MKDIR} ${INC_ROOT} ${BLOCK}
-	${AT}${MKDIR} ${OBJ_ROOT} ${BLOCK}
 	${AT}${MKDIR} ${SRC_ROOT} ${BLOCK}
-	${AT}${PRINT} "${_INFO} initializing git repository\n" ${BLOCK}
-	${AT}git init ${BLOCK}
-	${AT}echo "*.o\n*.d\n.vscode\na.out\n.DS_Store\nbin/\n*.ignore"\
-		> .gitignore ${BLOCK}
-	${AT}date > $@ ${BLOCK}
-	${AT}${PRINT} "${_INFO} creating first commit\n" ${BLOCK}
-	${AT}git add .gitignore ${BLOCK}
-	${AT}git add $@ ${BLOCK}
-	${AT}git add Makefile ${BLOCK}
-	${AT}git commit -m "init" ${BLOCK}
+	${AT}${MKDIR} ${SRC_ROOT} ${BLOCK}${AT}${MKDIR} ${INC_ROOT} ${BLOCK}
+	${AT}${MKDIR} ${SRC_ROOT} ${BLOCK}${AT}${MKDIR} ${LIB_ROOT} ${BLOCK}
+	${AT}${MKDIR} ${SRC_ROOT} ${BLOCK}${AT}${PRINT} "${_INFO} ${PROJECT}: folder structure created\n" ${BLOCK}
+	${AT}${MKDIR} ${SRC_ROOT} ${BLOCK}${AT}${GIT} init ${BLOCK}
+	${AT}${MKDIR} ${SRC_ROOT} ${BLOCK}${AT}${PRINT} "${_INFO} ${PROJECT}: git: initialized\n" ${BLOCK}
+	${AT}${MKDIR} ${SRC_ROOT} ${BLOCK}${AT}echo "*.o\n*.d\n.vscode\na.out\n.DS_Store\nbin/\n*.ignore" > .gitignore ${BLOCK}
+	${AT}${MKDIR} ${SRC_ROOT} ${BLOCK}${AT}${PRINT} "${_INFO} ${PROJECT}: git: .gitignore created\n" ${BLOCK}
+	${AT}${MKDIR} ${SRC_ROOT} ${BLOCK}${AT}${GIT} clone git@github.com:mlanca-c/Generic-README.git ${BLOCK}
+	${AT}${MKDIR} ${SRC_ROOT} ${BLOCK}${AT} mv Generic-README/README.md ./ ${BLOCK}
+	${AT}${MKDIR} ${SRC_ROOT} ${BLOCK}${AT} ${RM} Generic-README ${BLOCK}
+	${AT}${MKDIR} ${SRC_ROOT} ${BLOCK}${AT}${SED} 's/NAME/${PROJECT}/g' README.md ${BLOCK}
+	${AT}${MKDIR} ${SRC_ROOT} ${BLOCK}${AT}${PRINT} "${_INFO} ${PROJECT}: git: README.md created\n" ${BLOCK}
+	${AT}${MKDIR} ${SRC_ROOT} ${BLOCK}${AT}${GIT} add README.md ${BLOCK}
+	${AT}${MKDIR} ${SRC_ROOT} ${BLOCK}${AT}${GIT} add .gitignore ${BLOCK}
+	${AT}${MKDIR} ${SRC_ROOT} ${BLOCK}${AT}${GIT} add Makefile ${BLOCK}
+	${AT}${MKDIR} ${SRC_ROOT} ${BLOCK}${AT}${GIT} commit -m "first commit - via Makefile (automatic)" ${BLOCK}
+	${AT}${MKDIR} ${SRC_ROOT} ${BLOCK}${AT}${PRINT} "${_INFO} ${PROJECT}: git: commit \"initial commit\"\n" ${BLOCK}
+	${AT}${MKDIR} ${SRC_ROOT} ${BLOCK}${AT}${GIT} branch -M main ${BLOCK}
+	${AT}${MKDIR} ${SRC_ROOT} ${BLOCK}${AT}${GIT} remote add origin git@github.com:${USER}/${PROJECT}.git ${BLOCK}
+	${AT}${MKDIR} ${SRC_ROOT} ${BLOCK}${AT}${GIT} push -u origin main ${BLOCK}
+	${AT}${MKDIR} ${SRC_ROOT} ${BLOCK}${AT}${PRINT} "${_INFO} ${PROJECT}: initialized\n" ${BLOCK}
+	${AT}${MKDIR} ${SRC_ROOT} ${BLOCK}${AT}${PRINT} "${_INFO} ${PROJECT}: git: \"push -u origin main\"\n" ${BLOCK}
+	${AT}${MKDIR} ${SRC_ROOT} ${BLOCK}
 
 # Meta target to force a target to be executed
 .FORCE: ;
